@@ -1,0 +1,87 @@
+name: vm-access
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-vmportal}
+      MYSQL_USER: ${MYSQL_USER:-vmportal}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks: [database]
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          CMD-SHELL,
+          'MYSQL_PWD="$$MYSQL_PASSWORD" mysql --protocol=TCP -h 127.0.0.1 -u "$$MYSQL_USER" -D "$$MYSQL_DATABASE" -e "SELECT 1" >/dev/null 2>&1',
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    logging: &logging
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  guacd:
+    image: guacamole/guacd:1.6.0
+    networks: [gateway]
+    restart: unless-stopped
+    logging: *logging
+    # Deliberately no published port: guacd has no application authentication.
+  migrate:
+    build: .
+    image: vm-access-portal:local
+    env_file: .env
+    environment: &app-env
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      GUACD_HOST: guacd
+      GUACD_PORT: 4822
+      PORT: 3000
+      RECORDING_DIR: /recordings
+      TRUST_PROXY_HOPS: 1
+    command: [npm, run, "db:migrate"]
+    depends_on:
+      mysql: { condition: service_healthy }
+    networks: [database]
+    restart: "no"
+    logging: *logging
+  app:
+    build: .
+    image: vm-access-portal:local
+    env_file: .env
+    environment: *app-env
+    volumes:
+      - recordings:/recordings
+    networks: [database, gateway, frontend]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      guacd: { condition: service_started }
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: *logging
+  proxy:
+    image: nginx:1.28-alpine
+    ports:
+      # Bind this to an internal/VPN-facing IP, never 0.0.0.0 by accident.
+      - "${BIND_IP:-127.0.0.1}:443:443"
+    volumes:
+      - ./deploy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./deploy/tls:/etc/nginx/tls:ro
+    networks: [frontend]
+    depends_on:
+      app: { condition: service_healthy }
+    restart: unless-stopped
+    logging: *logging
+volumes:
+  mysql-data:
+  recordings:
+networks:
+  database: { internal: true }
+  frontend:
+  gateway:

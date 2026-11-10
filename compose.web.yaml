@@ -1,0 +1,17 @@
+# Standalone: docker compose --env-file .env.web -f compose.web.yaml ... on 11.11.11.13.
+name: vm-access-web
+services:
+  proxy:
+    image: nginx:1.28-alpine
+    env_file: .env.web
+    environment:
+      NGINX_ENVSUBST_FILTER: "^(BACKEND_IP|BACKEND_PORT)$$"
+    ports:
+      - "${WEB_BIND_IP:?Set WEB_BIND_IP}:443:443"
+    volumes:
+      - ./deploy/nginx.web.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./deploy/tls:/etc/nginx/tls:ro
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }

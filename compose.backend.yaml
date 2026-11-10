@@ -1,0 +1,60 @@
+# Standalone: docker compose -f compose.backend.yaml ... on 11.11.11.11.
+# No MySQL service and no public guacd port.
+name: vm-access
+services:
+  guacd:
+    image: guacamole/guacd:1.6.0
+    networks: [gateway]
+    restart: unless-stopped
+    logging: &logging
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+  migrate:
+    build: .
+    image: vm-access-portal:local
+    env_file: [.env, .env.migrate]
+    environment: &app-env
+      GUACD_HOST: guacd
+      GUACD_PORT: 4822
+      PORT: 3000
+      RECORDING_DIR: /recordings
+      TRUST_PROXY_HOPS: 1
+      MYSQL_TLS: "true"
+      MYSQL_SSL_CA: /etc/vmportal/db-ca/ca.pem
+    extra_hosts:
+      - "${MYSQL_HOST:?Set MYSQL_HOST to the certificate DNS name}:${MYSQL_SERVER_IP:?Set MYSQL_SERVER_IP to the actual DB address}"
+    volumes:
+      - ./deploy/db-ca:/etc/vmportal/db-ca:ro
+    command: [npm, run, "db:migrate"]
+    networks: [database]
+    restart: "no"
+    logging: *logging
+  app:
+    build: .
+    image: vm-access-portal:local
+    env_file: .env
+    environment: *app-env
+    ports:
+      - "${BACKEND_BIND_IP:?Set BACKEND_BIND_IP}:3000:3000"
+    extra_hosts:
+      - "${MYSQL_HOST:?Set MYSQL_HOST to the certificate DNS name}:${MYSQL_SERVER_IP:?Set MYSQL_SERVER_IP to the actual DB address}"
+    volumes:
+      - recordings:/recordings
+      - ./deploy/db-ca:/etc/vmportal/db-ca:ro
+    networks: [database, gateway]
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      guacd: { condition: service_started }
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging: *logging
+volumes:
+  recordings:
+networks:
+  # Outbound routing is required from the backend to 11.11.11.12:3306.
+  database:
+  gateway:

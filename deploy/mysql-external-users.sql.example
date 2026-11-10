@@ -1,0 +1,13 @@
+-- Run as a local DB administrator on the DB VM, NOT from the application.
+-- Backend VM: 11.11.11.11. Verify that routing/NAT preserves this source address.
+-- Replace both password placeholders with different strong random passwords.
+-- Do not run this example until the placeholders have been replaced.
+CREATE DATABASE IF NOT EXISTS vmportal CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+CREATE USER 'vmportal_migrator'@'11.11.11.11'
+  IDENTIFIED BY 'REPLACE_WITH_MIGRATION_PASSWORD' REQUIRE SSL;
+GRANT CREATE, INDEX, SELECT, INSERT ON vmportal.* TO 'vmportal_migrator'@'11.11.11.11';
+
+CREATE USER 'vmportal_app'@'11.11.11.11'
+  IDENTIFIED BY 'REPLACE_WITH_APPLICATION_PASSWORD' REQUIRE SSL;
+-- Next: run migration on the backend, THEN apply mysql-runtime-grants.sql.example on the DB VM.

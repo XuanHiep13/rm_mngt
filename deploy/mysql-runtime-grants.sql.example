@@ -1,0 +1,13 @@
+-- Run as a local DB administrator AFTER migration has created the tables.
+-- No GRANT OPTION, global privileges, schema changes or remote root access.
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.users TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.login_challenges TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.web_sessions TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.recovery_codes TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.assets TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.grants TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.remote_sessions TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.gateway_guard TO 'vmportal_app'@'11.11.11.11';
+GRANT SELECT, INSERT, UPDATE, DELETE ON vmportal.auth_throttle TO 'vmportal_app'@'11.11.11.11';
+-- Runtime audit is append-only for this account, with read access for reports.
+GRANT SELECT, INSERT ON vmportal.audit_events TO 'vmportal_app'@'11.11.11.11';

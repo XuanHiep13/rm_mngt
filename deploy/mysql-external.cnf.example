@@ -1,0 +1,12 @@
+# Native MySQL 8.4 on the DB VM. Place in its included MySQL configuration directory.
+# DB VM: 11.11.11.12. This is the LISTENING address, not the allowed client address.
+[mysqld]
+bind-address=11.11.11.12
+port=3306
+skip-name-resolve=ON
+require_secure_transport=ON
+ssl_ca=/etc/mysql/tls/ca.pem
+ssl_cert=/etc/mysql/tls/server-cert.pem
+ssl_key=/etc/mysql/tls/server-key.pem
+# Disable the unused X Protocol listener on 33060.
+mysqlx=OFF
