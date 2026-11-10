@@ -10,7 +10,7 @@ Người vận hành máy ảo không có quyền quản trị host của cổng
 
 - Cookie phiên chứa token ngẫu nhiên 256 bit; MySQL chỉ lưu SHA-256 của token. Production dùng cookie `__Host-vmportal`, Secure, HttpOnly, SameSite=Strict, Path=/.
 - Login bằng mật khẩu chỉ tạo challenge ngắn hạn, chưa tạo phiên đã đăng nhập. TOTP/recovery thành công mới phát cookie.
-- TOTP được mã hóa trong database; kiểm tra bước thời gian để chống replay. Mã khôi phục ngẫu nhiên được băm và xóa khi dùng.
+- TOTP được mã hóa trong database; chỉ chấp nhận mã của chu kỳ 30 giây hiện tại, không chấp nhận chu kỳ liền trước/liền sau, và kiểm tra bước thời gian để chống replay. Điện thoại và server cần đồng bộ thời gian. Mã khôi phục ngẫu nhiên được băm và xóa khi dùng.
 - Mật khẩu website dùng scrypt N=131072, r=8, p=1 với salt ngẫu nhiên. Không dùng AES để lưu mật khẩu website.
 - Mật khẩu máy đích cần giải mã để kết nối nên dùng AES-256-GCM. AAD gắn bí mật với ID máy, ngăn hoán đổi ciphertext giữa hai máy. Khóa 256 bit chỉ lấy từ môi trường máy chủ.
 - API không có chức năng xem/xuất mật khẩu máy đích. Form tạo/cập nhật/import bắt buộc đi HTTPS; mật khẩu mới do quản trị viên nhập vẫn tồn tại trong trình duyệt quản trị tại thời điểm nhập.

@@ -230,9 +230,10 @@ export function authRoutes(
     const secret = encryptedSecret
       ? unseal(encryptedSecret, config.ENCRYPTION_KEY, `mfa:${user.id}`)
       : "";
+    // Only accept the current 30-second step, without clock-drift tolerance.
     const delta =
       secret && /^\d{6}$/.test(code)
-        ? totp(secret, user.username).validate({ token: code, window: 1 })
+        ? totp(secret, user.username).validate({ token: code, window: 0 })
         : null;
     const step = Math.floor(Date.now() / 30000) + (delta ?? 0);
     if (

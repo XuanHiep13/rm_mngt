@@ -314,6 +314,74 @@ test("MFA login requires second factor; rejects replay; uses secure cookie in pr
     await f.close();
   }
 });
+for (const enrollment of [false, true]) {
+  test(`MFA ${enrollment ? "enrollment" : "login"} rejects adjacent-step and incorrect OTPs without creating a session`, async (t) => {
+    const timestamp = Date.UTC(2026, 10, 10, 12, 0, 15);
+    t.mock.method(Date, "now", () => timestamp);
+    const f = await fixture();
+    try {
+      await f.db.execute("DELETE FROM web_sessions");
+      if (enrollment)
+        await f.db.execute(
+          "UPDATE users SET mfa_enabled=0,mfa_secret=NULL,mfa_pending=? WHERE id=?",
+          [seal(f.admin.secret, key, `mfa:${f.admin.id}`), f.admin.id],
+        );
+      const primary = await request(f.app)
+        .post("/api/auth/login")
+        .set("Origin", origin)
+        .send({ username: "admin", password })
+        .expect(200);
+      assert.equal(primary.headers["set-cookie"], undefined);
+      let secret = f.admin.secret;
+      if (enrollment) {
+        const setup = await request(f.app)
+          .post("/api/auth/mfa/setup")
+          .set("Origin", origin)
+          .send({ challenge: primary.body.challenge })
+          .expect(200);
+        secret = setup.body.secret;
+      }
+      const otp = totp(secret, "admin");
+      const current = otp.generate({ timestamp });
+      const adjacent = [-30000, 30000].map((offset) =>
+        otp.generate({ timestamp: timestamp + offset }),
+      );
+      let incorrect = "000000";
+      while ([current, ...adjacent].includes(incorrect))
+        incorrect = String(Number(incorrect) + 1).padStart(6, "0");
+      for (const code of [...new Set(adjacent), incorrect]) {
+        assert.notEqual(code, current);
+        const rejected = await request(f.app)
+          .post("/api/auth/mfa/verify")
+          .set("Origin", origin)
+          .send({ challenge: primary.body.challenge, code })
+          .expect(401);
+        assert.equal(rejected.headers["set-cookie"], undefined);
+        assert.equal(rejected.body.user, undefined);
+        assert.equal(
+          (await f.db.query("SELECT id FROM web_sessions")).length,
+          0,
+        );
+      }
+      const accepted = await request(f.app)
+        .post("/api/auth/mfa/verify")
+        .set("Origin", origin)
+        .send({ challenge: primary.body.challenge, code: current })
+        .expect(200);
+      const cookie = accepted.headers["set-cookie"][0].split(";")[0];
+      assert.equal(accepted.body.recoveryCodes.length, enrollment ? 8 : 0);
+      const me = await request(f.app)
+        .get("/api/auth/me")
+        .set("Cookie", cookie)
+        .expect(200);
+      assert.equal(me.body.user.id, f.admin.id);
+      assert.equal((await f.db.query("SELECT id FROM web_sessions")).length, 1);
+    } finally {
+      await f.close();
+    }
+  });
+}
+
 test("first login enrolls MFA and returns single-use recovery codes", async () => {
   const f = await fixture();
   try {
