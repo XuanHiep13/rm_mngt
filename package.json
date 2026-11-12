@@ -16,7 +16,8 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "admin:create": "tsx scripts/create-admin.ts",
     "keys:generate": "node scripts/generate-keys.mjs",
-    "preview:local": "tsx scripts/local-preview.ts"
+    "preview:local": "tsx scripts/local-preview.ts",
+    "remote:test": "tsx scripts/remote-test.ts"
   },
   "dependencies": {
     "cookie-parser": "1.4.7",
@@ -48,6 +49,9 @@
     "prettier": "3.6.2",
     "supertest": "7.1.4",
     "typescript": "5.9.3",
-    "vite": "6.4.1"
+    "vite": "^6.4.6"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
   }
 }

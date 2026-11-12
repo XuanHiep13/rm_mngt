@@ -1,0 +1,7 @@
+name: vm-access-remote-test
+services:
+  guacd:
+    image: guacamole/guacd:1.6.0
+    ports:
+      - "127.0.0.1:4822:4822"
+    restart: unless-stopped

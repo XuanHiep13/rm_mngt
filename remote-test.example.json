@@ -1,0 +1,10 @@
+{
+  "host": "192.168.1.100",
+  "port": 3389,
+  "username": "Administrator",
+  "password": "CHANGE_ME",
+  "domain": "",
+  "ignoreCert": true,
+  "guacdHost": "127.0.0.1",
+  "guacdPort": 4822
+}
