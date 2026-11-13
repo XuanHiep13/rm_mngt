@@ -37,7 +37,7 @@ Base path `/api`, JSON UTF-8. GET dữ liệu cần cookie đăng nhập sau MFA
 
 `expiresAt` là milliseconds UTC hoặc `null` nếu không giới hạn. `os`: windows/linux; `protocol`: rdp/ssh. `status` bộ lọc phiên: all/live/recorded.
 
-`assets`: `{name,host,port,protocol,os,groupName,description,username,password,domain,hostKey,ignoreCert,enabled}`. Tạo mới cần password; khi cập nhật, bỏ trường password để giữ nguyên. SSH cần hostKey. API không trả ciphertext hoặc password.
+`assets`: `{name,host,port,protocol,os,groupName,description,username,password,domain,hostKey,ignoreCert,enabled}`. Tạo mới cần password; khi cập nhật, bỏ trường password để giữ nguyên. SSH cho phép bỏ trống hostKey để xác nhận fingerprint lần đầu. API không trả ciphertext hoặc password.
 
 ## Tunnel
 
@@ -48,3 +48,19 @@ Chỉ service gateway sử dụng Guacamole handshake với guacd. Trình duyệ
 ## Lỗi
 
 JSON `{error, fields?}`. HTTP 400 cho dữ liệu sai; 401 chưa đăng nhập/MFA sai; 403 thiếu quyền, Origin hoặc CSRF không hợp lệ; 404 tài nguyên không có; 409 trùng; 429 vượt giới hạn. Lỗi nội bộ không trả stack trace hoặc thông tin kết nối.
+
+## SSH trust on first use
+
+POST /api/ssh/host-key với {assetId} kiểm tra quyền, lấy khóa qua ssh-keyscan.
+Trả {trusted:true,...} nếu khóa khớp, hoặc {trusted:false,challenge,host,port,type,fingerprint}
+để hiển thị hộp xác nhận. Nếu khóa thay đổi, trả HTTP 409 và chặn kết nối.
+
+POST /api/ssh/host-key/confirm với {assetId,challenge,answer:"yes"} lưu khóa vào
+assets.host_key và ghi audit ssh.host_key_trusted. Challenge gắn với phiên web,
+máy và endpoint, hạn 5 phút, dùng một lần. Không nhận khóa tùy ý từ trình duyệt.
+Các API này áp dụng Origin/CSRF, MFA, đổi mật khẩu và quyền remote như API tạo phiên.
+POST /api/sessions và WebSocket từ chối máy SSH chưa có khóa đã xác nhận.
+
+Trust được chia sẻ trên từng asset. Host key nhập thủ công được coi là đã tin cậy.
+Bỏ trống hostKey khi thêm máy để hiện xác nhận lần đầu. Thay khóa đã lưu cần
+quản trị viên xác minh và sửa cấu hình máy; ứng dụng không tự chấp nhận khóa mới.

@@ -106,7 +106,7 @@ Nếu mất toàn bộ tài khoản quản trị, người có quyền quản l�
 
 1. Đăng nhập cổng bằng địa chỉ `APP_ORIGIN`.
 2. Thêm máy Windows với RDP đã bật và tài khoản local có quyền đăng nhập RDP. Để xác minh chứng thư khi kết nối bằng IPv4, chứng thư cần có IP SAN khớp IP máy; CA nội bộ phải được cài vào trust store của image guacd. Tùy chọn chấp nhận chứng thư tự ký bỏ kiểm tra chứng thư máy đích.
-3. Thêm Linux với SSH và dòng `known_hosts` đã xác minh qua kênh tin cậy. Không tự động tin khóa vừa quét trên mạng chưa xác minh.
+3. Thêm Linux với SSH. Có thể nhập dòng `known_hosts` đã xác minh, hoặc để trống để xác nhận fingerprint bằng `yes` lần đầu kết nối. Khóa được lưu lại, khóa thay đổi sẽ bị chặn. Backend cần `ssh-keyscan` trong PATH (Docker image đã có).
 4. Tạo người dùng vai trò **Vận hành**, chuyển mật khẩu tạm qua kênh nội bộ phù hợp. Họ bắt buộc thiết lập MFA và đổi mật khẩu.
 5. Cấp máy và thời hạn ở mục **Phân quyền**. Người dùng chỉ thấy máy được cấp. Quản trị viên được truy cập tất cả máy; kiểm toán viên xem dữ liệu kiểm toán nhưng không mở phiên remote.
 6. Kiểm tra Windows/Linux đại diện trước khi nhập toàn bộ hơn 300 máy.
@@ -136,7 +136,7 @@ Trong mục **Máy ảo → Nhập hàng loạt**, chọn tệp JSON UTF-8. Tố
 ]
 ```
 
-Đối với SSH dùng `protocol: "ssh"`, `os: "linux"`, `port: 22` và thêm `hostKey` chứa dòng `known_hosts`. Mật khẩu plaintext trong tệp nhập cần được bảo vệ và xử lý theo quy trình của đơn vị; không đưa tệp thật vào Git. API danh sách và chỉnh sửa không trả mật khẩu cũ về trình duyệt.
+Đối với SSH dùng `protocol: "ssh"`, `os: "linux"`, `port: 22` và tùy chọn `hostKey` chứa dòng `known_hosts`; bỏ trống để xác nhận fingerprint lần đầu. Mật khẩu plaintext trong tệp nhập cần được bảo vệ và xử lý theo quy trình của đơn vị; không đưa tệp thật vào Git. API danh sách và chỉnh sửa không trả mật khẩu cũ về trình duyệt.
 
 ## Phát triển và xem giao diện
 

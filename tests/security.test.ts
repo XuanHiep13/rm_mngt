@@ -502,7 +502,7 @@ test("asset APIs never return target secrets and bulk import rolls back invalid 
     await f
       .call()
       .post("/assets", { ...item, protocol: "ssh", os: "linux", hostKey: "" })
-      .expect(400);
+      .expect(201);
   } finally {
     await f.close();
   }

@@ -5,8 +5,9 @@ export default defineConfig({
   workers: 1,
   timeout: 60000,
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: `http://localhost:${process.env.TEST_PORT ?? "3000"}`,
     viewport: { width: 1440, height: 1000 },
+    channel: process.env.TEST_BROWSER_CHANNEL,
     launchOptions:
       process.platform === "darwin"
         ? {

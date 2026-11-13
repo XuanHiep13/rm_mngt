@@ -45,7 +45,7 @@ const assetInput = z
   })
   .superRefine((v, ctx) => {
     if (
-      v.protocol === "ssh" &&
+      v.protocol === "ssh" && v.hostKey &&
       !/^\S+\s+(ssh-ed25519|ssh-rsa|ecdsa-sha2-\S+)\s+[A-Za-z0-9+/=]+(?:\s.*)?$/.test(
         v.hostKey,
       )
@@ -419,6 +419,20 @@ export function apiRoutes(db: Database, config: Config, gateway: Gateway) {
       });
     });
     await gateway.closeUser(grant.user_id);
+    res.json({ ok: true });
+  });
+  router.post("/ssh/host-key", async (req, res) => {
+    const { assetId } = z.object({ assetId: uuid }).parse(req.body);
+    const asset = await gateway.authorized(req.auth!, assetId);
+    res.json(await gateway.sshTrust.inspect(req.auth!.sessionId, asset));
+  });
+  router.post("/ssh/host-key/confirm", async (req, res) => {
+    const { assetId, challenge } = z.object({
+      assetId: uuid, challenge: z.string().regex(/^[a-f0-9]{64}$/), answer: z.literal("yes"),
+    }).parse(req.body);
+    const asset = await gateway.authorized(req.auth!, assetId);
+    const result = await gateway.sshTrust.confirm(req.auth!.sessionId, asset, challenge);
+    await audit(db, req, "ssh.host_key_trusted", assetId, { host: asset.host, port: asset.port, fingerprint: result.fingerprint });
     res.json({ ok: true });
   });
   router.post("/sessions", async (req, res) => {

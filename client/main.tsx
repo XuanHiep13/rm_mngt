@@ -822,13 +822,12 @@ function AssetForm({
           </>
         ) : (
           <Field
-            label="SSH host key đã xác minh"
-            hint="Dán một dòng known_hosts; xác minh fingerprint với quản trị máy trước khi thêm."
+            label="SSH host key (tùy chọn)"
+            hint="Để trống để xác nhận fingerprint bằng yes ở lần kết nối đầu. Hoặc dán khóa đã xác minh."
           >
             <textarea
               name="hostKey"
               rows={3}
-              required
               defaultValue={asset?.hostKey}
               placeholder="10.10.20.15 ssh-ed25519 AAAAC3…"
             />

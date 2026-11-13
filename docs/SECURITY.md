@@ -26,7 +26,7 @@ Chỉ IPv4 thuộc các CIDR được cấu hình mới có thể là đích. Kh
 
 Gateway chỉ cho phép một tập lệnh điều khiển cần thiết. Từ chối lệnh handshake từ trình duyệt, clipboard và stream tải tệp. RDP tắt drive, printing, audio, SFTP; SSH tắt SFTP. Người có quyền hệ điều hành vẫn có thể tự chạy công cụ mạng/truyền tệp trên máy đích, nên cài đặt này không ngăn mọi cách đưa dữ liệu ra ngoài.
 
-SSH bắt buộc host key đã xác minh. RDP mặc định kiểm tra chứng thư và dùng NLA; tùy chọn `ignoreCert` do quản trị viên chọn phải được cân nhắc theo PKI nội bộ.
+SSH bắt buộc host key đã nhập thủ công hoặc được người có quyền remote xác nhận qua fingerprint ở lần đầu. Khóa mới không được lưu trước thao tác yes; khóa thay đổi bị chặn, không tự ghi đè. RDP mặc định kiểm tra chứng thư và dùng NLA; tùy chọn `ignoreCert` do quản trị viên chọn phải được cân nhắc theo PKI nội bộ.
 
 ## Bản ghi và kiểm toán
 

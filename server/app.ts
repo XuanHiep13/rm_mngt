@@ -29,7 +29,7 @@ export function createApp(
           connectSrc: [
             "'self'",
             ...(config.NODE_ENV === "development"
-              ? ["ws://localhost:3000"]
+              ? [config.APP_ORIGIN.replace(/^http/, "ws")]
               : []),
           ],
           objectSrc: ["'none'"],

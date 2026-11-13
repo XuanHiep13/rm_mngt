@@ -10,7 +10,7 @@ function DirectRemote({ asset }: { asset: Asset }) {
     <Remote asset={asset} onClose={() => setOpen(false)} />
   ) : (
     <main className="panel" style={{ margin: 32, padding: 24 }}>
-      <h1>Phiên thử RDP đã đóng</h1>
+      <h1>Phiên thử {asset.protocol.toUpperCase()} đã đóng</h1>
       <p>{asset.host}:{asset.port}</p>
       <button className="button" onClick={() => setOpen(true)}>Kết nối lại</button>
     </main>

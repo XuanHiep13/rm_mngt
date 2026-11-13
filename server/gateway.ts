@@ -14,6 +14,7 @@ import { digest, token, unseal } from "./crypto.js";
 import { requireValue } from "./errors.js";
 import { instruction, ProtocolParser } from "./protocol.js";
 import { targetPolicy } from "./network.js";
+import { SshTrust, requireSshHostKey, type SshAsset } from "./ssh-trust.js";
 
 export class Gateway {
   private connections = new Map<
@@ -29,6 +30,7 @@ export class Gateway {
   constructor(
     private db: Database,
     private config: Config,
+    readonly sshTrust = new SshTrust(db),
   ) {
     this.checkTarget = targetPolicy(config.ALLOWED_TARGET_CIDRS);
   }
@@ -41,7 +43,7 @@ export class Gateway {
       403,
       "Tài khoản chưa được phép remote.",
     );
-    const [asset] = await this.db.query(
+    const [asset] = await this.db.query<SshAsset & Record<string, any>>(
       "SELECT * FROM assets WHERE id=? AND enabled=1",
       [assetId],
     );
@@ -57,7 +59,7 @@ export class Gateway {
     return asset;
   }
   async createTicket(auth: Auth, assetId: string, ip: string) {
-    await this.authorized(auth, assetId);
+    requireSshHostKey(await this.authorized(auth, assetId));
     const id = randomUUID(),
       ticket = token(),
       time = Date.now();
@@ -213,6 +215,7 @@ export class Gateway {
           expiresAt: Number(row.expires_at),
         };
         const asset = await this.authorized(auth, row.asset_id);
+        requireSshHostKey(asset);
         requireValue(
           (await this.db.execute(
             "UPDATE remote_sessions SET status='connecting',ticket_hash=NULL WHERE id=? AND ticket_hash=? AND status='pending'",

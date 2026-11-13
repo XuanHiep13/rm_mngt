@@ -44,6 +44,7 @@ test.beforeAll(async () => {
       env: {
         ...process.env,
         NODE_ENV: "development",
+        PREVIEW_PORT: process.env.TEST_PORT ?? "3000",
         PREVIEW_GUACD_PORT: String(
           (mockGuacd.address() as net.AddressInfo).port,
         ),
@@ -204,4 +205,56 @@ test("real login, admin workflows and responsive layout", async ({ page }) => {
     ),
   ).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test("SSH first-use dialog requires yes, supports cancel, and blocks changed keys", async ({ page }) => {
+  let trusted = false, confirmations = 0, sessionRequests = 0, changed = false;
+  await page.route("**/ssh-first-use-test", (route) => route.fulfill({
+    contentType: "text/html",
+    body: '<html><body><div id="root"></div><script type="module" src="/remote-test.tsx"></script></body></html>',
+  }));
+  await page.route("**/local-remote-test/bootstrap", (route) => route.fulfill({ json: {
+    csrfToken: "test", asset: { id: "ssh-ui-test", name: "SSH UI test", host: "192.0.2.10", port: 22, protocol: "ssh", os: "linux", enabled: true },
+  } }));
+  await page.route("**/api/ssh/host-key", (route) => route.fulfill(changed
+    ? { status: 409, json: { error: "KHÓA SSH ĐÃ THAY ĐỔI" } }
+    : { json: { trusted, challenge: "challenge", host: "192.0.2.10", port: 22, type: "ecdsa-sha2-nistp256", fingerprint: "SHA256:test-fingerprint" } }));
+  await page.route("**/api/ssh/host-key/confirm", (route) => {
+    expect(route.request().postDataJSON().answer).toBe("yes");
+    confirmations++; trusted = true;
+    return route.fulfill({ json: { ok: true } });
+  });
+  await page.route("**/api/sessions", (route) => {
+    sessionRequests++;
+    return route.fulfill({ status: 503, json: { error: "Synthetic connection stopped after SSH verification" } });
+  });
+  await page.goto("/ssh-first-use-test");
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByText("SHA256:test-fingerprint")).toBeVisible();
+  const confirm = page.getByRole("button", { name: "Xác nhận và kết nối" });
+  await expect(confirm).toBeDisabled();
+  expect(sessionRequests).toBe(0);
+  await page.getByLabel("Gõ yes để tin cậy máy SSH").fill("no");
+  await expect(confirm).toBeDisabled();
+  await page.getByLabel("Gõ yes để tin cậy máy SSH").fill("yes");
+  await confirm.click();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  await expect(page.getByRole("alert")).toContainText("Synthetic connection");
+  expect(confirmations).toBe(1);
+  expect(sessionRequests).toBe(1);
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("Synthetic connection");
+  await expect(page.getByRole("dialog")).toHaveCount(0);
+  expect(confirmations).toBe(1);
+  expect(sessionRequests).toBe(2);
+  changed = true;
+  await page.reload();
+  await expect(page.getByRole("alert")).toContainText("KHÓA SSH ĐÃ THAY ĐỔI");
+  expect(sessionRequests).toBe(2);
+  changed = false; trusted = false;
+  await page.reload();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await page.getByRole("button", { name: "Hủy", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Phiên thử SSH đã đóng" })).toBeVisible();
+  expect(confirmations).toBe(1);
 });

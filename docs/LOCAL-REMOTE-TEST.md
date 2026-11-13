@@ -1,84 +1,88 @@
-# Thử RDP local với cấu hình cố định
+# Thử RDP/SSH local với cấu hình cố định
 
-Chạy một kết nối thật qua gateway hiện có, chưa cần MySQL, tài khoản website,
-MFA, thêm máy hoặc cấp quyền qua giao diện. Script dùng SQLite trong RAM để
-giữ trạng thái mà gateway cần; dừng là mất dữ liệu. Không thay đổi luồng production.
+Chế độ `npm run remote:test` dùng gateway thật, SQLite trong RAM, không cần
+MySQL, đăng nhập website hoặc MFA. Phiên và bản ghi là tạm thời; SSH host key
+đã xác nhận được lưu riêng để dùng lại sau khi khởi động lại.
 
-Yêu cầu: Node.js 22.13+ (có node:sqlite) hoặc Node mới hơn tương thích,
-npm, guacd và máy đích có RDP. Nếu dùng Docker Desktop, container guacd
-phải có đường mạng tới IP máy đích.
+## Chuẩn bị
 
-## 1. Cài dependency và điền thông tin máy
-
-Chạy PowerShell tại thư mục gốc:
+Cần Node.js 22.13+ hoặc bản mới tương thích, npm, guacd.
+SSH cần `ssh-keyscan` trong PATH trên máy chạy Node: Windows OpenSSH Client
+hoặc gói openssh-client trên Linux. Image Docker ứng dụng đã cài công cụ này.
 
 ```powershell
 npm ci
 New-Item -ItemType Directory -Force .local
-Copy-Item remote-test.example.json .local/remote-test.json
+Copy-Item remote-test.linux.example.json .local/remote-test.json
+docker compose -f compose.remote-test.yaml up -d
 ```
 
-Sửa **.local/remote-test.json**:
+Chỉ copy file mẫu khi chưa có cấu hình thật để tránh ghi đè thông tin của bạn.
+Sửa .local/remote-test.json:
 
 ```json
 {
-  "host": "192.168.1.100",
-  "port": 3389,
-  "username": "Administrator",
-  "password": "mat-khau-Windows-thuc-te",
-  "domain": "",
-  "ignoreCert": true,
+  "protocol": "ssh",
+  "os": "linux",
+  "host": "192.168.1.101",
+  "port": 22,
+  "username": "ubuntu",
+  "password": "mat-khau-Linux",
   "guacdHost": "127.0.0.1",
   "guacdPort": 4822
 }
 ```
 
-Đổi host/username/password theo máy thật. Password là mật khẩu Windows, không
-phải PIN. Domain để trống cho tài khoản local hoặc điền domain phù hợp.
-ignoreCert=true bỏ kiểm tra chứng thư RDP, chỉ dùng cho máy thử có chứng thư tự ký;
-đặt false nếu máy đã có chứng thư được guacd tin cậy.
-File thật nằm trong .local/ đã được Git/Docker ignore. Không điền mật khẩu
-vào file example hoặc mã frontend. IP đích phải là IPv4, không phải loopback.
+Không cần điền hostKey. Máy Linux phải bật SSH và cho phép tài khoản đăng nhập
+bằng mật khẩu. Chế độ thử chưa hỗ trợ private key. Container guacd và máy chạy
+Node đều phải có đường tới cổng SSH máy đích; scanner chạy tại Node, SSH chạy tại guacd.
 
-## 2. Chạy guacd
-
-```powershell
-docker compose -f compose.remote-test.yaml up -d
-```
-
-Chỉ chạy guacd, không chạy MySQL/Nginx/app production. Cổng 4822 chỉ bind
-localhost. Nếu đã có guacd, điền guacdHost/guacdPort và bỏ qua lệnh trên.
-
-## 3. Chạy và mở remote
+## Xác nhận lần đầu và dùng lại
 
 ```powershell
 npm run remote:test
 ```
 
-Mở **http://localhost:3000**. Trang tự mở remote với cấu hình đã điền,
-không hỏi đăng nhập. Đóng phiên rồi bấm Kết nối lại để thử lần nữa.
-Thay cấu hình phải khởi động lại script. Không chạy đồng thời npm run dev
-vì dùng cùng cổng. Lệnh không dùng cấu hình kết nối MySQL trong .env,
-nhưng từ chối chạy nếu NODE_ENV=production trong shell hoặc .env.
-Chỉ bind 127.0.0.1; host truy cập phải là localhost:3000.
+Mở http://localhost:3000. Lần đầu ứng dụng hiển thị IP/cổng, loại khóa và
+fingerprint SHA256. Kiểm tra đúng máy rồi gõ **yes**, bấm **Xác nhận và kết nối**.
+Hủy sẽ không lưu khóa và không mở phiên.
 
-Luồng: trình duyệt → Node local → guacd → RDP máy đích.
-Mật khẩu cố định chỉ được đọc ở server. Ticket, WebSocket và handshake
-vẫn đi qua gateway thật. Bản ghi được ghi vào thư mục tạm và xóa khi
-dừng bình thường bằng Ctrl+C; nếu tiến trình crash có thể còn thư mục tạm.
-Chế độ này tự cấp phiên admin local, không dùng để thử MFA/phân quyền.
+Khóa đã xác nhận lưu tại **.local/ssh-known-hosts.json**, theo IP và cổng.
+File chỉ chứa public host key, không chứa mật khẩu. Không dùng known_hosts của
+Windows và không tự tin khóa vừa quét nếu bạn chưa xác nhận. Restart script
+vẫn dùng khóa đã lưu, không hỏi lại nếu khóa máy không đổi.
 
-## Nếu kết nối thất bại
+Nếu hostKey đã được nhập thủ công trong remote-test.json, ứng dụng coi đó là
+khóa đã tin cậy và không hỏi yes. Muốn dùng luồng lần đầu cho máy chưa lưu,
+bỏ trường hostKey hoặc đặt chuỗi rỗng. Khóa nhập thủ công được ưu tiên hơn cache.
 
-- Máy Windows phải hỗ trợ và bật RDP; tài khoản có quyền đăng nhập RDP.
-- Firewall/định tuyến phải cho phép container guacd tới IP/cổng máy đích.
-- Xem log Node và `docker compose -f compose.remote-test.yaml logs --tail 100 guacd`.
-- Kiểm tra `Test-NetConnection 192.168.1.100 -Port 3389` từ host;
-  kết quả này chưa chứng minh container guacd truy cập được máy, nhất là qua VPN.
-- Chỉ có một phiên remote đồng thời trong chế độ thử. Đóng phiên cũ trước khi mở lại.
+Khóa máy thay đổi sẽ báo **KHÓA SSH ĐÃ THAY ĐỔI** và chặn kết nối. Không tự ghi đè.
+Sau khi xác minh thay đổi hợp lệ, quản trị viên mới xóa mục tương ứng trong cache
+(hoặc cập nhật khóa nhập thủ công), rồi restart script để xác nhận lại.
 
-Dừng Node bằng Ctrl+C. Dừng guacd:
+Cấu hình và cache local đã được Git/Docker ignore. Đừng commit mật khẩu vào file mẫu.
+Không chạy đồng thời npm run dev vì dùng chung cổng 3000.
+Nếu shell/.env có NODE_ENV=production, đổi sang development cho chế độ thử.
+
+## Windows và desktop Linux
+
+Windows RDP: dùng remote-test.example.json, protocol=rdp, os=windows, port=3389.
+Linux SSH: terminal tương tác, không cần desktop hoặc xrdp.
+Linux desktop: cần desktop và xrdp, dùng protocol=rdp, os=linux, port=3389.
+ignoreCert=true chỉ bỏ kiểm tra chứng thư RDP khi thử máy dùng chứng thư tự ký;
+không ảnh hưởng xác minh SSH. Cấu hình Windows cũ không có protocol/os vẫn hợp lệ.
+
+## Dừng và kiểm tra lỗi
+
+Ctrl+C dừng Node và xóa bản ghi tạm (crash có thể để lại thư mục tạm).
+Khóa SSH đã tin cậy vẫn được giữ.
+Đóng phiên trước khi kết nối lại; chế độ thử chỉ cho một phiên đồng thời.
 
 ```powershell
+docker compose -f compose.remote-test.yaml logs --tail 50 guacd
 docker compose -f compose.remote-test.yaml down
 ```
+
+Trong ứng dụng dùng MySQL, khóa được lưu tại assets.host_key, dùng chung cho
+những người được cấp quyền trên cùng máy đã khai báo. Xác nhận được ghi audit.
+Không cần thay schema. Backend phải có ssh-keyscan và có đường tới máy đích.

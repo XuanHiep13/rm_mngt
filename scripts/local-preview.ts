@@ -13,7 +13,8 @@ import { hashPassword, seal } from "../server/crypto.js";
 
 if (process.env.NODE_ENV === "production")
   throw new Error("Preview cannot run in production.");
-const origin = "http://localhost:3000";
+const port = Number(process.env.PREVIEW_PORT ?? "3000");
+const origin = `http://localhost:${port}`;
 const recordingDir = await mkdtemp(path.join(os.tmpdir(), "vmportal-preview-"));
 const config = readConfig({
   NODE_ENV: "development",
@@ -76,7 +77,7 @@ const vite = await viteServer({
 });
 app.use(vite.middlewares);
 app.use(errorHandler);
-server.listen(3000, "127.0.0.1", () => {
+server.listen(port, "127.0.0.1", () => {
   console.log(
     `LOCAL PREVIEW ONLY: ${origin}\nUsername: preview-admin\nPassword: ${password}\nMFA secret (temporary preview): ${mfa}\nAll VM addresses are documentation placeholders; remote access is blocked. Data disappears when stopped.`,
   );

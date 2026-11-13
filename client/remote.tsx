@@ -22,6 +22,12 @@ export function Remote({
   const [active, setActive] = useState(false);
   const [error, setError] = useState("");
   const [seconds, setSeconds] = useState(0);
+  const [attempt, setAttempt] = useState(0);
+  const [verification, setVerification] = useState<{
+    challenge: string; host: string; port: number; type: string; fingerprint: string;
+  } | null>(null);
+  const [answer, setAnswer] = useState("");
+  const [confirming, setConfirming] = useState(false);
   useEffect(() => {
     let client: any,
       keyboard: any,
@@ -43,7 +49,18 @@ export function Remote({
     observer.observe(root);
     const blur = () => keyboard?.reset();
     root.addEventListener("blur", blur);
+    setStatus("Đang xác thực quyền truy cập…");
     void (async () => {
+      if (asset.protocol === "ssh") {
+        const trust = await post("/ssh/host-key", { assetId: asset.id });
+        if (disposed) return;
+        if (!trust.trusted) {
+          setAnswer("");
+          setVerification(trust);
+          setStatus("Chờ xác nhận fingerprint SSH");
+          return;
+        }
+      }
       const ticket = await post("/sessions", { assetId: asset.id });
       sessionId = ticket.sessionId;
       if (disposed) {
@@ -96,7 +113,7 @@ export function Remote({
       client.connect(`ticket=${encodeURIComponent(ticket.ticket)}`);
       setStatus("Đang kết nối tới máy đích…");
     })().catch((e) => {
-      if (!disposed) setError(e.message);
+      if (!disposed) { setError(e.message); setStatus("Không thể kết nối"); }
     });
     return () => {
       disposed = true;
@@ -108,7 +125,7 @@ export function Remote({
       if (sessionId)
         void post(`/sessions/${sessionId}/terminate`).catch(() => {});
     };
-  }, [asset.id]);
+  }, [asset.id, attempt]);
   useEffect(() => {
     if (!active) return;
     const timer = setInterval(() => setSeconds((v) => v + 1), 1000);
@@ -149,6 +166,41 @@ export function Remote({
           Ngắt kết nối
         </button>
       </header>
+      {verification && (
+        <div className="modal-backdrop">
+          <section className="modal" role="dialog" aria-modal="true" aria-labelledby="ssh-trust-title">
+            <h2 id="ssh-trust-title">Xác nhận máy SSH lần đầu</h2>
+            <p>Chưa có khóa đã lưu cho {verification.host}:{verification.port}.</p>
+            <p>Loại khóa: <strong>{verification.type}</strong></p>
+            <p className="mono" style={{ overflowWrap: "anywhere" }}>{verification.fingerprint}</p>
+            <p>Kiểm tra fingerprint của máy đích. Gõ <strong>yes</strong> để lưu khóa và tiếp tục.</p>
+            <form onSubmit={async (event) => {
+              event.preventDefault();
+              if (answer !== "yes" || confirming) return;
+              setConfirming(true);
+              try {
+                await post("/ssh/host-key/confirm", { assetId: asset.id, challenge: verification.challenge, answer });
+                setVerification(null);
+                setError("");
+                setAttempt((value) => value + 1);
+              } catch (e: any) {
+                setError(e.message);
+                setVerification(null);
+                setStatus("Không thể xác nhận khóa SSH");
+              } finally { setConfirming(false); }
+            }}>
+              <input autoFocus aria-label="Gõ yes để tin cậy máy SSH" value={answer}
+                onChange={(event) => setAnswer(event.target.value)} autoComplete="off" disabled={confirming} />
+              <div className="modal-actions">
+                <button type="button" className="button secondary" disabled={confirming} onClick={onClose}>Hủy</button>
+                <button className="button" disabled={answer !== "yes" || confirming}>
+                  {confirming ? "Đang lưu…" : "Xác nhận và kết nối"}
+                </button>
+              </div>
+            </form>
+          </section>
+        </div>
+      )}
       {error && (
         <div className="remote-error" role="alert">
           {error}
