@@ -1,0 +1,61 @@
+{
+  "name": "vm-access-desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Desktop client for VM Access",
+  "author": "VM Access",
+  "main": "main.cjs",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test tests/*.test.cjs",
+    "test:smoke": "node tests/smoke.cjs",
+    "test:packaged": "node tests/packaged-smoke.cjs",
+    "pack:win": "electron-builder --win --x64 --dir --publish never",
+    "dist:win": "electron-builder --win nsis --x64 --publish never",
+    "dist:mac": "electron-builder --mac dmg zip --x64 --arm64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.3.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "internal.vmaccess.desktop",
+    "productName": "VM Access",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "main.cjs",
+      "policy.cjs",
+      "preload.cjs",
+      "setup.html",
+      "setup.css",
+      "setup.js"
+    ],
+    "artifactName": "VM-Access-${version}-${os}-${arch}.${ext}",
+    "forceCodeSigning": true,
+    "win": {
+      "target": "nsis",
+      "signAndEditExecutable": true
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    },
+    "mac": {
+      "category": "public.app-category.business",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    }
+  }
+}

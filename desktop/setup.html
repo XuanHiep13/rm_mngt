@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; base-uri 'none'; form-action 'none'; frame-src 'none'">
+  <title>VM Access · Máy chủ</title>
+  <link rel="stylesheet" href="setup.css">
+</head>
+<body>
+  <main>
+    <span class="brand">VM ACCESS</span>
+    <h1>Kết nối máy chủ</h1>
+    <p>Nhập địa chỉ website VM Access của đơn vị. Kết nối VPN trước nếu máy chủ nằm trong mạng nội bộ.</p>
+    <form id="server-form">
+      <label for="origin">Địa chỉ máy chủ</label>
+      <input id="origin" type="url" placeholder="https://remote.example.internal" required autocomplete="url" autofocus>
+      <p class="hint">Thử local: http://localhost:3000</p>
+      <p id="error" role="alert"></p>
+      <button id="connect" type="submit">Kết nối</button>
+    </form>
+  </main>
+  <script src="setup.js"></script>
+</body>
+</html>
